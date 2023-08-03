@@ -7,17 +7,28 @@ from prefect import task
 
 
 @task
-def hello_prefect_ovh(token: str) -> str:
+def create_client(token: str) -> str:
     """
-    Sample task that create a client and test an endpoint
+    Sample task to create an OVHcloud Client
 
     Returns:
-        Your Identification information in a json file or
-        unauthorized id you provide wrong credentials
+        A client object from SDK
     """
     client = AuthenticatedClient(
         base_url="https://gra.training.ai.cloud.ovh.net", token=token
     )
+    return client
+
+
+@task
+def hello_prefect_ovh(client) -> str:
+    """
+    Sample task that test your credentials
+
+    Returns:
+        You credentials in json
+        or wrong identification
+    """
     with client as client:
         # or if you need more info (e.g. status_code)
         response: Response[Me] = me.sync_detailed(client=client)
