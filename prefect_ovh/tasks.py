@@ -1,24 +1,24 @@
 """This is an example tasks module"""
+from ov_hcloud_ai_solution_client import AuthenticatedClient
+from ov_hcloud_ai_solution_client.api.me import me
+from ov_hcloud_ai_solution_client.models import Me
+from ov_hcloud_ai_solution_client.types import Response
 from prefect import task
 
 
 @task
-def hello_prefect_ovh() -> str:
+def hello_prefect_ovh(token: str) -> str:
     """
-    Sample task that says hello!
+    Sample task that create a client and test an endpoint
 
     Returns:
-        A greeting for your collection
+        Your Identification information in a json file or
+        unauthorized id you provide wrong credentials
     """
-    return "Hello, prefect-OVHcloud!"
-
-
-@task
-def goodbye_prefect_ovh() -> str:
-    """
-    Sample task that says goodbye!
-
-    Returns:
-        A farewell for your collection
-    """
-    return "Goodbye, prefect-OVHcloud!"
+    client = AuthenticatedClient(
+        base_url="https://gra.training.ai.cloud.ovh.net", token=token
+    )
+    with client as client:
+        # or if you need more info (e.g. status_code)
+        response: Response[Me] = me.sync_detailed(client=client)
+    return response.content.decode()

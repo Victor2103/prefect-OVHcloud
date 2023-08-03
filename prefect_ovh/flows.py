@@ -1,26 +1,23 @@
 """This is an example flows module"""
 from prefect import flow
 
-from prefect_ovh.blocks import OvhcloudBlock
-from prefect_ovh.tasks import (
-    goodbye_prefect_ovh,
-    hello_prefect_ovh,
-)
+from prefect_ovh.tasks import hello_prefect_ovh
 
 
-@flow
-def hello_and_goodbye():
+@flow(name="Hello Flow From Prefect")
+def hello_world(token: str) -> dict:
     """
-    Sample flow that says hello and goodbye!
-    """
-    OvhcloudBlock.seed_value_for_example()
-    block = OvhcloudBlock.load("sample-block")
+    Sample Flow that return your credentials
 
-    print(hello_prefect_ovh())
-    print(f"The block's value: {block.value}")
-    print(goodbye_prefect_ovh())
-    return "Done"
+    Returns:
+        Your Identification information in a json file or
+        unauthorized id you provide wrong credentials
+    """
+    # Get your crendentials
+    credentials = hello_prefect_ovh(token=token)
+    # Return this dict of the flow
+    return credentials
 
 
 if __name__ == "__main__":
-    hello_and_goodbye()
+    flow.run()
