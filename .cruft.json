@@ -1,0 +1,20 @@
+{
+  "template": "https://github.com/PrefectHQ/prefect-collection-template",
+  "commit": "008e0473a06186c9608d26f6288810f46d4509e2",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "full_name": "Victor Vitcheff",
+      "email": "victor.vitcheff@ovhcloud.com",
+      "github_organization": "Victor2103",
+      "collection_name": "prefect-OVHcloud",
+      "collection_slug": "prefect_ovh",
+      "collection_short_description": "An integration of with OVHcloud",
+      "_copy_without_render": [
+        ".github/workflows/*.yml"
+      ],
+      "_template": "https://github.com/PrefectHQ/prefect-collection-template"
+    }
+  },
+  "directory": null
+}
