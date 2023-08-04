@@ -58,6 +58,8 @@ def create_a_first_job(
         sshPublicKeys=sshPublicKeys,
         volumes=volumes,
     )
+    # You can run the task with only the image as a parameter
+    # response = create_a_job(client=client,image=image)
     # Return this dict of the flow
     return response
 
