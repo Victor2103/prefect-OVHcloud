@@ -33,3 +33,17 @@ def hello_prefect_ovh(client) -> str:
         # or if you need more info (e.g. status_code)
         response: Response[Me] = me.sync_detailed(client=client)
     return response.content.decode()
+
+
+@task
+def create_a_job(client) -> str:
+    """
+    Sample task that create an AI Training Job
+
+    Returns:
+        The json response when creating a job
+    """
+    with client as client:
+        # or if you need more info (e.g. status_code)
+        response: Response[Me] = me.sync_detailed(client=client)
+    return response.content.decode()
