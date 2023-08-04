@@ -1,6 +1,6 @@
 """This is an example tasks module"""
 from ov_hcloud_ai_solution_client import AuthenticatedClient
-from ov_hcloud_ai_solution_client.api.job import job_new
+from ov_hcloud_ai_solution_client.api.job import job_get, job_new
 from ov_hcloud_ai_solution_client.api.me import me
 from ov_hcloud_ai_solution_client.models import Job, JobSpec, Me
 from ov_hcloud_ai_solution_client.types import Response
@@ -73,11 +73,24 @@ def create_a_job(
         name = request.pop("name")
     if cpu != 0:
         request.update({"resources": {"cpu": cpu, "gpu": 0}})
-    print(request)
 
     with client as client:
         # or if you need more info (e.g. status_code)
         response: Response[Job] = job_new.sync_detailed(
             client=client, json_body=JobSpec.from_dict(request)
         )
+    return response.content.decode()
+
+
+@task
+def get_infos_of_job(id_job: str, client) -> str:
+    """
+    Sample task that Send the infos of a job
+
+    Returns:
+        The json response asking infos of a job
+    """
+    with client as client:
+        response: Response[Job] = job_get.sync_detailed(id=id_job, client=client)
+
     return response.content.decode()

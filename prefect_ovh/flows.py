@@ -1,7 +1,14 @@
 """This is an example flows module"""
+import json
+
 from prefect import flow
 
-from prefect_ovh.tasks import create_a_job, create_client, hello_prefect_ovh
+from prefect_ovh.tasks import (
+    create_a_job,
+    create_client,
+    get_infos_of_job,
+    hello_prefect_ovh,
+)
 
 
 @flow(name="Hello Flow From Prefect")
@@ -27,11 +34,13 @@ def create_a_first_job(
 ) -> dict:
     """
     Sample Flow that create an AI Training Job
+    Get the id of this job
+    Make a call to get infos with state
 
     Returns:
-        The response when creating a job
+        The response when calling job infos
     """
-    # Create the client
+    # Create a client for job creation
     client = create_client(token=token)
     # Define the parameter to put in the job creation
     image = "ubuntu"
@@ -60,8 +69,15 @@ def create_a_first_job(
     )
     # You can run the task with only the image as a parameter
     # response = create_a_job(client=client,image=image)
+    response = json.loads(response)
+    # Get the id
+    id = response["id"]
+    # Create a new client to get the infos of the job
+    client = create_client(token=token)
+    # Make a new call to the api
+    result = get_infos_of_job(id_job=id, client=client)
     # Return this dict of the flow
-    return response
+    return result
 
 
 if __name__ == "__main__":
