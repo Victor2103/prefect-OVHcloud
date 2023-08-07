@@ -1,6 +1,12 @@
 """This is an example tasks module"""
 from ov_hcloud_ai_solution_client import AuthenticatedClient
-from ov_hcloud_ai_solution_client.api.job import job_get, job_log, job_new, job_start
+from ov_hcloud_ai_solution_client.api.job import (
+    job_get,
+    job_kill,
+    job_log,
+    job_new,
+    job_start,
+)
 from ov_hcloud_ai_solution_client.api.me import me
 from ov_hcloud_ai_solution_client.models import Job, JobSpec, Me
 from ov_hcloud_ai_solution_client.types import Response
@@ -123,7 +129,21 @@ def start_an_existing_job(id_job: str, client) -> str:
         str: The infos of the job running
     """
     with client as client:
-        response: Response[Job] = job_start.sync_detailed(
-            id="fb60e006-d6a0-4ba1-b3e8-bf780ae4f26d", client=client
-        )
+        response: Response[Job] = job_start.sync_detailed(id=id_job, client=client)
+    return response.content.decode()
+
+
+@task
+def stop_an_existing_job(id_job: str, client) -> str:
+    """Stop an existing job
+
+    Args:
+        id_job (str): the id of the ovhai training job
+        client (_type_): an authenticated client
+
+    Returns:
+        str: the infos of the job
+    """
+    with client as client:
+        response: Response[Job] = job_kill.sync_detailed(id=id_job, client=client)
     return response.content.decode()

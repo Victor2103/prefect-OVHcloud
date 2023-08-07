@@ -1,5 +1,6 @@
 """This is an example flows module"""
 import json
+import time
 
 from prefect import flow
 
@@ -10,6 +11,7 @@ from prefect_ovh.tasks import (
     get_logs_of_job,
     hello_prefect_ovh,
     start_an_existing_job,
+    stop_an_existing_job,
 )
 
 
@@ -39,16 +41,17 @@ def create_a_first_job(
     Get the id of this job
     Make a call to get infos with state
     Get the logs of the job
-    Start the same job
+    Stop the same job
+    Restart the same job
     Returns:
         The response when calling job infos
     """
     # Create a client for job creation
     client = create_client(token=token)
     # Define the parameter to put in the job creation
-    image = "ubuntu"
+    image = "bash"
     http_port = 8080
-    command = []
+    command = ["sleep", "180"]
     listEnvVars = []
     dicLabels = {}
     name = None
@@ -79,12 +82,21 @@ def create_a_first_job(
     client = create_client(token=token)
     # Make a new call to the api
     result = get_infos_of_job(id_job=id, client=client)
+    print("Here is your job created : \n", result)
     # Create a new client for the job's logs
     client = create_client(token=token)
     # Get the logs of the job
     result = get_logs_of_job(id_job=id, client=client)
+    print("Here are your logs \n", result)
     # Create a new client
     client = create_client(token=token)
+    # Stop the job
+    result = stop_an_existing_job(id_job=id, client=client)
+    print("Here is your job stopped : \n", result)
+    # Create a new client
+    client = create_client(token=token)
+    # Whait that your job is really stopped
+    time.sleep(60)
     # Restart the job
     result = start_an_existing_job(id_job=id, client=client)
     # Return this dict of the flow
