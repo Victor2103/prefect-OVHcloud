@@ -7,6 +7,7 @@ from prefect_ovh.tasks import (
     create_a_job,
     create_client,
     get_infos_of_job,
+    get_logs_of_job,
     hello_prefect_ovh,
 )
 
@@ -36,6 +37,7 @@ def create_a_first_job(
     Sample Flow that create an AI Training Job
     Get the id of this job
     Make a call to get infos with state
+    Get the logs of the job
 
     Returns:
         The response when calling job infos
@@ -76,6 +78,10 @@ def create_a_first_job(
     client = create_client(token=token)
     # Make a new call to the api
     result = get_infos_of_job(id_job=id, client=client)
+    # Create a new client for the job's logs
+    client = create_client(token=token)
+    # Get the logs of the job
+    result = get_logs_of_job(id_job=id, client=client)
     # Return this dict of the flow
     return result
 
