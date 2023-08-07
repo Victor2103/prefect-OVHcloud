@@ -62,7 +62,7 @@ def create_a_first_job(
     volumes = []
     # Launch the task create a job
     response = create_a_job(
-        client=client,
+        token=token,
         image=image,
         http_port=http_port,
         command=command,

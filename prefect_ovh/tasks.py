@@ -1,4 +1,6 @@
 """This is an example tasks module"""
+import json
+
 from ov_hcloud_ai_solution_client import AuthenticatedClient
 from ov_hcloud_ai_solution_client.api.job import (
     job_delete,
@@ -12,6 +14,7 @@ from ov_hcloud_ai_solution_client.api.me import me
 from ov_hcloud_ai_solution_client.models import Job, JobSpec, Me
 from ov_hcloud_ai_solution_client.types import Response
 from prefect import task
+from prefect.exceptions import PrefectException
 
 
 @task
@@ -45,7 +48,7 @@ def hello_prefect_ovh(client) -> str:
 
 @task
 def create_a_job(
-    client,
+    token,
     image,
     http_port=8080,
     command=[],
@@ -63,7 +66,7 @@ def create_a_job(
     Returns:
         The json response when creating a job
     """
-    # First of all we create the request
+    # First of all we create the request to send to the core API
     request = {
         "command": command,
         "defaultHttpPort": http_port,
@@ -80,11 +83,27 @@ def create_a_job(
         name = request.pop("name")
     if cpu != 0:
         request.update({"resources": {"cpu": cpu, "gpu": 0}})
-
+    # Create a unique client for python SDK
+    client = AuthenticatedClient(
+        base_url="https://gra.training.ai.cloud.ovh.net", token=token
+    )
     with client as client:
         response: Response[Job] = job_new.sync_detailed(
             client=client, json_body=JobSpec.from_dict(request)
         )
+    # We check if the job is submitted to the AI Training tool
+    if response.status_code != 200:
+        raise PrefectException("You Job can't be run !", response.content.decode())
+    else:
+        # We get the content of the response
+        response = response.content.decode()
+        # We transform the response as a dict
+        response = json.loads(response)
+        # We get the id of the job
+        # TO UNCOMMENT id = response["id"]
+        # At regular intervals, we check whether the job has been completed
+        # TO UNCOMMENT state = response["status"]["state"]
+    raise PrefectException("STOP")
     return response.content.decode()
 
 
