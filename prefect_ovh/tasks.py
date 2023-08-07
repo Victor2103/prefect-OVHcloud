@@ -1,6 +1,7 @@
 """This is an example tasks module"""
 from ov_hcloud_ai_solution_client import AuthenticatedClient
 from ov_hcloud_ai_solution_client.api.job import (
+    job_delete,
     job_get,
     job_kill,
     job_log,
@@ -147,3 +148,19 @@ def stop_an_existing_job(id_job: str, client) -> str:
     with client as client:
         response: Response[Job] = job_kill.sync_detailed(id=id_job, client=client)
     return response.content.decode()
+
+
+@task
+def delete_an_existing_job(id_job: str, client) -> str:
+    """Delete an existing job with his id
+
+    Args:
+        id_job (str): The id of the job
+        client (_type_): The SDK client
+
+    Returns:
+        str: Nothing if the job is correctly deleted
+    """
+    with client as client:
+        response: Response[Job] = job_delete.sync_detailed(id=id_job, client=client)
+    return response

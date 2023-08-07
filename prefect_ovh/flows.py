@@ -7,6 +7,7 @@ from prefect import flow
 from prefect_ovh.tasks import (
     create_a_job,
     create_client,
+    delete_an_existing_job,
     get_infos_of_job,
     get_logs_of_job,
     hello_prefect_ovh,
@@ -96,9 +97,14 @@ def create_a_first_job(
     # Create a new client
     client = create_client(token=token)
     # Whait that your job is really stopped
-    time.sleep(60)
+    time.sleep(20)
     # Restart the job
     result = start_an_existing_job(id_job=id, client=client)
+    print(result)
+    time.sleep(300)
+    # Delete the job
+    client = create_client(token=token)
+    result = delete_an_existing_job(id_job=id, client=client)
     # Return this dict of the flow
     return result
 
