@@ -1,6 +1,6 @@
 """This is an example tasks module"""
 from ov_hcloud_ai_solution_client import AuthenticatedClient
-from ov_hcloud_ai_solution_client.api.job import job_get, job_log, job_new
+from ov_hcloud_ai_solution_client.api.job import job_get, job_log, job_new, job_start
 from ov_hcloud_ai_solution_client.api.me import me
 from ov_hcloud_ai_solution_client.models import Job, JobSpec, Me
 from ov_hcloud_ai_solution_client.types import Response
@@ -108,4 +108,22 @@ def get_logs_of_job(id_job: str, client) -> str:
     """
     with client as client:
         response: Response[Job] = job_log.sync_detailed(id=id_job, client=client)
+    return response.content.decode()
+
+
+@task
+def start_an_existing_job(id_job: str, client) -> str:
+    """Start a job in interrupted or done state
+
+    Args:
+        id_job (str): the id of the job
+        client (AuthenticatedClient): the authenticated Client
+
+    Returns:
+        str: The infos of the job running
+    """
+    with client as client:
+        response: Response[Job] = job_start.sync_detailed(
+            id="fb60e006-d6a0-4ba1-b3e8-bf780ae4f26d", client=client
+        )
     return response.content.decode()

@@ -9,6 +9,7 @@ from prefect_ovh.tasks import (
     get_infos_of_job,
     get_logs_of_job,
     hello_prefect_ovh,
+    start_an_existing_job,
 )
 
 
@@ -38,7 +39,7 @@ def create_a_first_job(
     Get the id of this job
     Make a call to get infos with state
     Get the logs of the job
-
+    Start the same job
     Returns:
         The response when calling job infos
     """
@@ -82,6 +83,10 @@ def create_a_first_job(
     client = create_client(token=token)
     # Get the logs of the job
     result = get_logs_of_job(id_job=id, client=client)
+    # Create a new client
+    client = create_client(token=token)
+    # Restart the job
+    result = start_an_existing_job(id_job=id, client=client)
     # Return this dict of the flow
     return result
 
