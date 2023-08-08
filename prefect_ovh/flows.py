@@ -132,6 +132,8 @@ def test(token):
     gpu = 0
     sshPublicKeys = []
     volumes = []
+    timeout = 3600
+    wait_seconds = 3
     response = create_a_job(
         token=token,
         image=image,
@@ -144,6 +146,8 @@ def test(token):
         gpu=gpu,
         sshPublicKeys=sshPublicKeys,
         volumes=volumes,
+        timeout=timeout,
+        wait_seconds=wait_seconds,
     )
     return response
 
