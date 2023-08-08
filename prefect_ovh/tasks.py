@@ -65,28 +65,28 @@ def create_a_job(
     """Create your first job and wait until he is finished
 
     Args:
-        token (_type_): _description_
-        image (_type_): _description_
-        http_port (int, optional): _description_. Defaults to 8080.
-        command (list, optional): _description_. Defaults to [].
-        listEnvVars (list, optional): _description_. Defaults to [].
-        dicLabels (dict, optional): _description_. Defaults to {}.
-        name (_type_, optional): _description_. Defaults to None.
-        cpu (int, optional): _description_. Defaults to 0.
-        gpu (int, optional): _description_. Defaults to 1.
-        sshPublicKeys (list, optional): _description_. Defaults to [].
-        volumes (list, optional): _description_. Defaults to [].
+        token (str):  your bearer token with AI operator role
+        image (str): your docker image
+        http_port (int, optional): the http port of the app.
+            Defaults to 8080.
+        command (list, optional): the command to run inside the docker container.
+            Defaults to [].
+        listEnvVars (list, optional): Une liste de variables d'environnement.
+            Defaults to [].
+        dicLabels (dict, optional): Un dictionnaire des labels du job.
+            Defaults to {}.
+        name (_type_, optional): la nom du job. Defaults to None.
+        cpu (int, optional): le nombre de cpu dans le job. Defaults to 0.
+        gpu (int, optional): le nombre de gpu dans le job. Defaults to 1.
+        sshPublicKeys (list, optional): un tableau de string avec les clées ssh.
+            Defaults to [].
+        volumes (list, optional): le tableau avec les swift containers ou les repo git.
+            Defaults to [].
 
     Raises:
-        PrefectException: _description_
-        PrefectException: _description_
-        PrefectException: _description_
-        PrefectException: _description_
-        PrefectException: _description_
-        PrefectException: _description_
-
+        PrefectException: Raise this exception if job can't be create
     Returns:
-        Response[Job]: _description_
+        Response[Job]: The content of the job submitted
     """
     # First of all we create the request to send to the core API
     request = {
@@ -118,73 +118,72 @@ def create_a_job(
         raise PrefectException(
             "You Job can't be run !, here is the reason :", response.content.decode()
         )
-    else:
+    # We get the content of the response
+    response_content = response.content.decode()
+    # We transform the response as a dict
+    response_dict = json.loads(response_content)
+    # We get the id of the job
+    id = response_dict["id"]
+    # At regular intervals, we check whether the job has been completed
+    state = response_dict["status"]["state"]
+    while (
+        state != "DONE"
+        and state != "INTERRUPTED"
+        and state != "FAILED"
+        and state != "ERROR"
+    ):
+        # Wait 10 seconds
+        time.sleep(10)
+        # Make a new call to get the status
+        client = AuthenticatedClient(
+            base_url="https://gra.training.ai.cloud.ovh.net", token=token
+        )
+        with client as client:
+            response: Response[Job] = job_get.sync_detailed(id=id, client=client)
+        # We check if you have the new informations of the job
+        if response.status_code != 200:
+            raise PrefectException(
+                "You Job can't be run !, here is the reason :",
+                response.content.decode(),
+            )
         # We get the content of the response
         response_content = response.content.decode()
         # We transform the response as a dict
         response_dict = json.loads(response_content)
-        # We get the id of the job
-        id = response_dict["id"]
-        # At regular intervals, we check whether the job has been completed
         state = response_dict["status"]["state"]
-        while (
-            state != "DONE"
-            and state != "INTERRUPTED"
-            and state != "FAILED"
-            and state != "ERROR"
-        ):
-            # Wait 10 seconds
-            time.sleep(10)
-            # Make a new call to get the status
+        if state == "INTERRUPTED" or state == "FAILED" or state == "ERROR":
+            # Get the logs of the application
             client = AuthenticatedClient(
                 base_url="https://gra.training.ai.cloud.ovh.net", token=token
             )
             with client as client:
-                response: Response[Job] = job_get.sync_detailed(id=id, client=client)
-            # We check if you have the new informations of the job
-            if response.status_code != 200:
-                raise PrefectException(
-                    "You Job can't be run !, here is the reason :",
-                    response.content.decode(),
-                )
-            # We get the content of the response
-            response_content = response.content.decode()
-            # We transform the response as a dict
-            response_dict = json.loads(response_content)
-            state = response_dict["status"]["state"]
-            if state == "INTERRUPTED" or state == "FAILED" or state == "ERROR":
-                # Get the logs of the application
-                client = AuthenticatedClient(
-                    base_url="https://gra.training.ai.cloud.ovh.net", token=token
-                )
-                with client as client:
-                    logs = job_log.sync_detailed(id=id, client=client)
-                if logs.status_code != 200:
-                    raise PrefectException("We can't access the logs of your job")
-                else:
-                    if state == "INTERRUPTED":
-                        raise PrefectException(
-                            "Your job has been interrupted, here are the logs",
-                            logs.content.decode(),
-                        )
-                    if state == "FAILED":
-                        raise PrefectException(
-                            "Your job has failed, here are the logs",
-                            logs.content.decode(),
-                        )
-                    if state == "ERROR":
-                        raise PrefectException(
-                            "Your job has an error due to back end, here are the logs",
-                            logs.content.decode(),
-                        )
+                logs = job_log.sync_detailed(id=id, client=client)
+            if logs.status_code != 200:
+                raise PrefectException("We can't access the logs of your job")
             else:
-                if state != "DONE":
-                    print(
-                        datetime.datetime.now(datetime.timezone.utc),
-                        f" [prefect] Wait, your job {id} is in state ",
-                        state,
+                if state == "INTERRUPTED":
+                    raise PrefectException(
+                        "Your job has been interrupted, here are the logs",
+                        logs.content.decode(),
                     )
-        return response
+                if state == "FAILED":
+                    raise PrefectException(
+                        "Your job has failed, here are the logs \n"
+                        + f"{logs.content.decode()}"
+                    )
+                if state == "ERROR":
+                    raise PrefectException(
+                        "Your job has an error due to back end, here are the logs",
+                        logs.content.decode(),
+                    )
+        else:
+            if state != "DONE":
+                print(
+                    datetime.datetime.now(datetime.timezone.utc),
+                    f" [prefect] Wait, your job {id} is in state ",
+                    state,
+                )
+    return response
 
 
 @task
