@@ -1,5 +1,6 @@
 """This is an example tasks module"""
 import json
+import time
 
 from ov_hcloud_ai_solution_client import AuthenticatedClient
 from ov_hcloud_ai_solution_client.api.job import (
@@ -93,18 +94,69 @@ def create_a_job(
         )
     # We check if the job is submitted to the AI Training tool
     if response.status_code != 200:
-        raise PrefectException("You Job can't be run !", response.content.decode())
+        raise PrefectException(
+            "You Job can't be run !, here is the reason :", response.content.decode()
+        )
     else:
         # We get the content of the response
-        response = response.content.decode()
+        response_content = response.content.decode()
         # We transform the response as a dict
-        response = json.loads(response)
+        response_dict = json.loads(response_content)
         # We get the id of the job
-        # TO UNCOMMENT id = response["id"]
+        id = response_dict["id"]
         # At regular intervals, we check whether the job has been completed
-        # TO UNCOMMENT state = response["status"]["state"]
-    raise PrefectException("STOP")
-    return response.content.decode()
+        state = response_dict["status"]["state"]
+        while (
+            state != "DONE"
+            and state != "INTERRUPTED"
+            and state != "FAILED"
+            and state != "ERROR"
+        ):
+            print("salut")
+            # Wait 5 minutes
+            time.sleep(10)
+            # Make a new call to get the status
+            client = AuthenticatedClient(
+                base_url="https://gra.training.ai.cloud.ovh.net", token=token
+            )
+            with client as client:
+                response: Response[Job] = job_get.sync_detailed(id=id, client=client)
+            # We check if you have the new informations of the job
+            if response.status_code != 200:
+                raise PrefectException(
+                    "You Job can't be run !, here is the reason :",
+                    response.content.decode(),
+                )
+            # We get the content of the response
+            response_content = response.content.decode()
+            # We transform the response as a dict
+            response_dict = json.loads(response_content)
+            state = response_dict["status"]["state"]
+            print(type(state))
+            if state == "INTERRUPTED" or state == "FAILED" or state == "ERROR":
+                # Get the logs of the application
+                client = AuthenticatedClient(
+                    base_url="https://gra.training.ai.cloud.ovh.net", token=token
+                )
+                with client as client:
+                    logs = job_log.sync_detailed(id=id, client=client)
+                if state == "INTERRUPTED":
+                    raise PrefectException(
+                        "Your job has been interrupted, here are the logs", logs
+                    )
+                if state == "FAILED":
+                    raise PrefectException(
+                        "Your job has failed, here are the logs", logs
+                    )
+                if state == "ERROR":
+                    raise PrefectException(
+                        "Your job has an error due to back end, here are the logs", logs
+                    )
+            else:
+                print(state == "DONE")
+                if state != "DONE":
+                    print("Your job is in state", state)
+        return response
 
 
 @task

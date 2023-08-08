@@ -109,5 +109,44 @@ def create_a_first_job(
     return result
 
 
+@flow
+def test(token):
+    """
+    Sample Flow that create an AI Training Job
+    Get the id of this job
+    Make a call to get infos with state
+    Get the logs of the job
+    Stop the same job
+    Restart the same job
+    Returns:
+        The response when calling job infos
+    """
+    # Define the parameter to put in the job creation
+    image = "bash"
+    http_port = 8080
+    command = ["sleep", "80"]
+    listEnvVars = []
+    dicLabels = {}
+    name = None
+    cpu = 0
+    gpu = 1
+    sshPublicKeys = []
+    volumes = []
+    response = create_a_job(
+        token=token,
+        image=image,
+        http_port=http_port,
+        command=command,
+        listEnvVars=listEnvVars,
+        dicLabels=dicLabels,
+        name=name,
+        cpu=cpu,
+        gpu=gpu,
+        sshPublicKeys=sshPublicKeys,
+        volumes=volumes,
+    )
+    return response.content.decode()
+
+
 if __name__ == "__main__":
     flow.run()
