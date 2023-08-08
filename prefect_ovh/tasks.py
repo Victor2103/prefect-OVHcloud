@@ -132,6 +132,13 @@ def create_a_job(
         and state != "FAILED"
         and state != "ERROR"
     ):
+        # Send a message with the state of the job
+        if state != "DONE":
+            print(
+                datetime.datetime.now(datetime.timezone.utc),
+                f" [prefect] Wait, your job {id} is in state ",
+                state,
+            )
         # Wait 10 seconds
         time.sleep(10)
         # Make a new call to get the status
@@ -151,6 +158,7 @@ def create_a_job(
         # We transform the response as a dict
         response_dict = json.loads(response_content)
         state = response_dict["status"]["state"]
+        # We check if the run is not broken
         if state == "INTERRUPTED" or state == "FAILED" or state == "ERROR":
             # Get the logs of the application
             client = AuthenticatedClient(
@@ -163,8 +171,8 @@ def create_a_job(
             else:
                 if state == "INTERRUPTED":
                     raise PrefectException(
-                        "Your job has been interrupted, here are the logs",
-                        logs.content.decode(),
+                        "Your job is interrupted, here are the logs \n"
+                        + f"{logs.content.decode()}"
                     )
                 if state == "FAILED":
                     raise PrefectException(
@@ -173,16 +181,15 @@ def create_a_job(
                     )
                 if state == "ERROR":
                     raise PrefectException(
-                        "Your job has an error due to back end, here are the logs",
-                        logs.content.decode(),
+                        "Your job has an error in the parameter, here are the logs \n"
+                        + f"{logs.content.decode()}"
                     )
-        else:
-            if state != "DONE":
-                print(
-                    datetime.datetime.now(datetime.timezone.utc),
-                    f" [prefect] Wait, your job {id} is in state ",
-                    state,
-                )
+    # We transform the response with only the string
+    response = response.content.decode()
+    # We transform the response as a dict
+    response = json.loads(response)
+    # We transform the response with a well format to see it
+    response = json.dumps(response, indent=4)
     return response
 
 

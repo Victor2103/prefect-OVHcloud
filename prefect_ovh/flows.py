@@ -124,7 +124,7 @@ def test(token):
     # Define the parameter to put in the job creation
     image = "bash"
     http_port = 8080
-    command = ["sleepp", "80"]
+    command = ["sleep", "80"]
     listEnvVars = []
     dicLabels = {}
     name = None
@@ -145,12 +145,6 @@ def test(token):
         sshPublicKeys=sshPublicKeys,
         volumes=volumes,
     )
-    # We transform the response with only the string
-    response = response.content.decode()
-    # We transform the response as a dict
-    response = json.loads(response)
-    # We transform the response with a well format to see it
-    response = json.dumps(response, indent=4)
     return response
 
 
