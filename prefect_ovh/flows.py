@@ -128,8 +128,8 @@ def test(token):
     listEnvVars = []
     dicLabels = {}
     name = None
-    cpu = 0
-    gpu = 1
+    cpu = 1
+    gpu = 0
     sshPublicKeys = []
     volumes = []
     response = create_a_job(
