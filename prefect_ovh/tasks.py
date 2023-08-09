@@ -292,19 +292,25 @@ def start_an_existing_job(id_job: str, client: AuthenticatedClient) -> dict:
 
 
 @task
-def stop_an_existing_job(id_job: str, client) -> str:
-    """Stop an existing job
+def stop_job(id_job: str, client: AuthenticatedClient) -> dict:
+    """Stop an existing job from AI Training
 
     Args:
-        id_job (str): the id of the ovhai training job
-        client (_type_): an authenticated client
+        id_job (str): The id of the job
+        client (AuthenticatedClient): the authenticated client for SDK python
+
+    Raises:
+        PrefectException: The exception if we can't stop this job
 
     Returns:
-        str: the infos of the job
+        dict: the dictionnary with the information of the job
     """
     with client as client:
         response: Response[Job] = job_kill.sync_detailed(id=id_job, client=client)
-    return response.content.decode()
+    if response.status_code == 200:
+        return json.loads(response.content.decode())
+    else:
+        raise PrefectException(f"We can't stop this job {response.content.decode()}")
 
 
 @task

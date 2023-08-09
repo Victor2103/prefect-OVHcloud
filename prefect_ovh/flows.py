@@ -11,7 +11,7 @@ from prefect_ovh.tasks import (
     get_infos_of_job,
     get_logs_of_job,
     start_an_existing_job,
-    stop_an_existing_job,
+    stop_job,
 )
 
 
@@ -88,7 +88,7 @@ def create_a_first_job(
     # Create a new client
     client = create_client(token=token)
     # Stop the job
-    result = stop_an_existing_job(id_job=id, client=client)
+    result = stop_job(id_job=id, client=client)
     print("Here is your job stopped : \n", f"{result}")
     # Create a new client
     client = create_client(token=token)
@@ -207,6 +207,22 @@ def test_start_job(token: str, id_job: str):
     """
     client = create_client(token=token)
     response = start_an_existing_job(id_job=id_job, client=client)
+    return json.dumps(response, indent=4)
+
+
+@flow
+def test_stop_job(token: str, id_job: str):
+    """Simple flow to stop an existing job
+
+    Args:
+        token (str): your Bearer token
+        id_job (str): your job id
+
+    Returns:
+        The infos of the job in a json format
+    """
+    client = create_client(token=token)
+    response = stop_job(id_job=id_job, client=client)
     return json.dumps(response, indent=4)
 
 
