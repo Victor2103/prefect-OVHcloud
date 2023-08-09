@@ -10,7 +10,6 @@ from prefect_ovh.tasks import (
     delete_an_existing_job,
     get_infos_of_job,
     get_logs_of_job,
-    hello_prefect_ovh,
     start_an_existing_job,
     stop_an_existing_job,
 )
@@ -27,10 +26,7 @@ def hello_world(token: str) -> dict:
     """
     # Create the client
     client = create_client(token=token)
-    # Get your crendentials
-    credentials = hello_prefect_ovh(client=client)
-    # Return this dict of the flow
-    return credentials
+    return client
 
 
 @flow(name="Create your first Job")
@@ -164,6 +160,23 @@ def test_client(token):
     """
     client = create_client(token=token)
     return client
+
+
+@flow
+def test_infos(token: str):
+    """Simple flow to get the infos of a job
+
+    Args:
+        token (str): your Bearer token
+
+    Returns:
+        The infos with a good display
+    """
+    client = create_client(token=token)
+    infos = get_infos_of_job(
+        id_job="358b2544-51cd-41d5-add8-1eaba8337acb", client=client
+    )
+    return json.dumps(infos, indent=4)
 
 
 if __name__ == "__main__":

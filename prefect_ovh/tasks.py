@@ -49,21 +49,6 @@ def create_client(token: str) -> AuthenticatedClient:
 
 
 @task
-def hello_prefect_ovh(client) -> str:
-    """
-    Sample task that test your credentials
-
-    Returns:
-        You credentials in json
-        or wrong identification
-    """
-    with client as client:
-        # or if you need more info (e.g. status_code)
-        response: Response[Me] = me.sync_detailed(client=client)
-    return response.content.decode()
-
-
-@task
 def create_a_job(
     token,
     image,
@@ -238,17 +223,27 @@ def create_a_job(
 
 
 @task
-def get_infos_of_job(id_job: str, client) -> str:
-    """
-    Sample task that Send the infos of a job
+def get_infos_of_job(id_job: str, client) -> dict:
+    """Get all infos of an OVHcloud's job
+    Args:
+        id_job (str): the id of the job
+        client (AuthenticatedClient): The Authenticated client
+
+    Raises:
+        PrefectException: If the id of the job is wrong
 
     Returns:
-        The json response asking infos of a job
+        dict: The response in a json format
     """
     with client as client:
         response: Response[Job] = job_get.sync_detailed(id=id_job, client=client)
-
-    return response.content.decode()
+    # We check if the job is existing
+    if response.status_code == 200:
+        return json.loads(response.content.decode())
+    else:
+        raise PrefectException(
+            "We can't get the infos of this job : " + response.content.decode()
+        )
 
 
 @task
