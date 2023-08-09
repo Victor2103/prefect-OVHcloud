@@ -270,19 +270,25 @@ def get_logs_of_job(id_job: str, client: AuthenticatedClient) -> str:
 
 
 @task
-def start_an_existing_job(id_job: str, client) -> str:
-    """Start a job in interrupted or done state
+def start_an_existing_job(id_job: str, client: AuthenticatedClient) -> dict:
+    """Start an existing job from AI Training
 
     Args:
-        id_job (str): the id of the job
-        client (AuthenticatedClient): the authenticated Client
+        id_job (str): The id of the job
+        client (AuthenticatedClient): the authenticated client for SDK python
+
+    Raises:
+        PrefectException: The exception if we can't start this job
 
     Returns:
-        str: The infos of the job running
+        dict: the dictionnary with the information of the job
     """
     with client as client:
         response: Response[Job] = job_start.sync_detailed(id=id_job, client=client)
-    return response.content.decode()
+    if response.status_code == 200:
+        return json.loads(response.content.decode())
+    else:
+        raise PrefectException(f"We can't start this job {response.content.decode()}")
 
 
 @task

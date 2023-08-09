@@ -194,5 +194,21 @@ def test_logs(token: str, id_job: str):
     return logs
 
 
+@flow
+def test_start_job(token: str, id_job: str):
+    """Simple flow to start an existing job
+
+    Args:
+        token (str): your Bearer token
+        id_job (str): your job id
+
+    Returns:
+        The infos of the job in a json format
+    """
+    client = create_client(token=token)
+    response = start_an_existing_job(id_job=id_job, client=client)
+    return json.dumps(response, indent=4)
+
+
 if __name__ == "__main__":
     flow.run()
