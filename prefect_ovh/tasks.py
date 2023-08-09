@@ -20,12 +20,18 @@ from prefect.exceptions import PrefectException
 
 
 @task
-def create_client(token: str) -> str:
-    """
-    Sample task to create an OVHcloud Client
+def create_client(token: str) -> AuthenticatedClient:
+    """Create an authenticated client for the SDK python
+    We test if your token is correct
+
+    Args:
+        token (str): Your bearer token from OVHcloud
+
+    Raises:
+        PrefectException: If your token is not valid
 
     Returns:
-        A client object from SDK
+        AuthenticatedClient: Your client authenticated
     """
     client = AuthenticatedClient(
         base_url="https://gra.training.ai.cloud.ovh.net", token=token
@@ -33,6 +39,10 @@ def create_client(token: str) -> str:
     with client as client:
         response: Me = me.sync_detailed(client=client)
     if response.status_code == 200:
+        # Because client can make one call to the api we recreate a client
+        client = AuthenticatedClient(
+            base_url="https://gra.training.ai.cloud.ovh.net", token=token
+        )
         return client
     else:
         raise PrefectException("Your token is not valid " + response.content.decode())
