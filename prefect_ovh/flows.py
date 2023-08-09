@@ -163,20 +163,35 @@ def test_client(token):
 
 
 @flow
-def test_infos(token: str):
+def test_infos(token: str, id_job: str):
     """Simple flow to get the infos of a job
 
     Args:
         token (str): your Bearer token
+        id_job (str): your job id
 
     Returns:
         The infos with a good display
     """
     client = create_client(token=token)
-    infos = get_infos_of_job(
-        id_job="358b2544-51cd-41d5-add8-1eaba8337acb", client=client
-    )
+    infos = get_infos_of_job(id_job=id_job, client=client)
     return json.dumps(infos, indent=4)
+
+
+@flow
+def test_logs(token: str, id_job: str):
+    """Simple flow to get the logs of a job
+
+    Args:
+        token (str): your Bearer token
+        id_job (str): your job id
+
+    Returns:
+        The logs as a string
+    """
+    client = create_client(token=token)
+    logs = get_logs_of_job(id_job=id_job, client=client)
+    return logs
 
 
 if __name__ == "__main__":

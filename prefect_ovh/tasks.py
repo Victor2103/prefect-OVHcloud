@@ -223,7 +223,7 @@ def create_a_job(
 
 
 @task
-def get_infos_of_job(id_job: str, client) -> dict:
+def get_infos_of_job(id_job: str, client: AuthenticatedClient) -> dict:
     """Get all infos of an OVHcloud's job
     Args:
         id_job (str): the id of the job
@@ -247,19 +247,26 @@ def get_infos_of_job(id_job: str, client) -> dict:
 
 
 @task
-def get_logs_of_job(id_job: str, client) -> str:
-    """Sample task that returns the logs of a given job
+def get_logs_of_job(id_job: str, client: AuthenticatedClient) -> str:
+    """Get the logs of an OVHcloud's job
 
     Args:
         id_job (str): the id of the job
-        client (_type_): An authenticated client with a token
+        client (AuthenticatedClient): The client for the SDK Python
+    Raises:
+        PrefectException: If we can't provide the logs of the job
 
     Returns:
-        str: the logs of the jobs in a string
+        str: The response as a log from OVHcloud
     """
     with client as client:
         response: Response[Job] = job_log.sync_detailed(id=id_job, client=client)
-    return response.content.decode()
+    if response.status_code == 200:
+        return response.content.decode()
+    else:
+        raise PrefectException(
+            f"We can't get the logs of this job : {response.content.decode()}"
+        )
 
 
 @task
