@@ -152,5 +152,19 @@ def test_creation(token):
     return response
 
 
+@flow
+def test_client(token):
+    """Generate a client and return it
+
+    Args:
+        token (_type_): Your Bearer token from OVHcloud
+
+    Returns:
+        _type_: Authenticated Client from the python SDK
+    """
+    client = create_client(token=token)
+    return client
+
+
 if __name__ == "__main__":
     flow.run()

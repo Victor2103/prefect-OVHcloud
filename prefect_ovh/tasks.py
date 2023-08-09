@@ -30,7 +30,12 @@ def create_client(token: str) -> str:
     client = AuthenticatedClient(
         base_url="https://gra.training.ai.cloud.ovh.net", token=token
     )
-    return client
+    with client as client:
+        response: Me = me.sync_detailed(client=client)
+    if response.status_code == 200:
+        return client
+    else:
+        raise PrefectException("Your token is not valid " + response.content.decode())
 
 
 @task
