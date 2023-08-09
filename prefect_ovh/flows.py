@@ -7,7 +7,7 @@ from prefect import flow
 from prefect_ovh.tasks import (
     create_a_job,
     create_client,
-    delete_an_existing_job,
+    delete_job,
     get_infos_of_job,
     get_logs_of_job,
     start_an_existing_job,
@@ -100,7 +100,7 @@ def create_a_first_job(
     time.sleep(300)
     # Delete the job
     client = create_client(token=token)
-    result = delete_an_existing_job(id_job=id, client=client)
+    result = delete_job(id_job=id, client=client)
     # Return this dict of the flow
     return result
 
@@ -224,6 +224,22 @@ def test_stop_job(token: str, id_job: str):
     client = create_client(token=token)
     response = stop_job(id_job=id_job, client=client)
     return json.dumps(response, indent=4)
+
+
+@flow
+def test_delete_job(token: str, id_job: str):
+    """Simple flow to delete an existing job
+
+    Args:
+        token (str): your Bearer token
+        id_job (str): your job id
+
+    Returns:
+        A str to confirm that your job with this id is delete
+    """
+    client = create_client(token=token)
+    response = delete_job(id_job=id_job, client=client)
+    return f"Your job {response} is deleted"
 
 
 if __name__ == "__main__":

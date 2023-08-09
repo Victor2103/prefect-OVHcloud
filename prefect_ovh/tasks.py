@@ -314,16 +314,22 @@ def stop_job(id_job: str, client: AuthenticatedClient) -> dict:
 
 
 @task
-def delete_an_existing_job(id_job: str, client) -> str:
-    """Delete an existing job with his id
+def delete_job(id_job: str, client: AuthenticatedClient) -> dict:
+    """Delete an existing job from AI Training
 
     Args:
         id_job (str): The id of the job
-        client (_type_): The SDK client
+        client (AuthenticatedClient): the authenticated client for SDK python
+
+    Raises:
+        PrefectException: The exception if we can't delete this job
 
     Returns:
-        str: Nothing if the job is correctly deleted
+        dict: the dictionnary with the information of the job
     """
     with client as client:
         response: Response[Job] = job_delete.sync_detailed(id=id_job, client=client)
-    return response
+    if response.status_code == 204:
+        return id_job
+    else:
+        raise PrefectException("We can't delete this job ")
