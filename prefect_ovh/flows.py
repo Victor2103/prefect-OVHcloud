@@ -110,7 +110,7 @@ def create_a_first_job(
 
 
 @flow
-def test(token):
+def test_creation(token):
     """
     Sample Flow that create an AI Training Job
     Get the id of this job
