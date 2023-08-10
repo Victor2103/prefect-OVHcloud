@@ -127,7 +127,7 @@ def create_job_and_wait_until_is_done(
     return json.dumps(infos, indent=4)
 
 
-@flow
+@flow(name="Test the python client")
 def test_client(token):
     """Generate a client and return it
 
@@ -141,7 +141,7 @@ def test_client(token):
     return client
 
 
-@flow
+@flow(name="Test the task to get infos of a job")
 def test_infos(token: str, id_job: str):
     """Simple flow to get the infos of a job
 
@@ -157,7 +157,7 @@ def test_infos(token: str, id_job: str):
     return json.dumps(infos, indent=4)
 
 
-@flow
+@flow(name="Test the task to get the logs of the job")
 def test_logs(token: str, id_job: str):
     """Simple flow to get the logs of a job
 
@@ -173,7 +173,7 @@ def test_logs(token: str, id_job: str):
     return logs
 
 
-@flow
+@flow(name="Test the task to start an existing AI Training job")
 def test_start_job(token: str, id_job: str):
     """Simple flow to start an existing job
 
@@ -189,7 +189,7 @@ def test_start_job(token: str, id_job: str):
     return json.dumps(response, indent=4)
 
 
-@flow
+@flow(name="Test the task to stop a job")
 def test_stop_job(token: str, id_job: str):
     """Simple flow to stop an existing job
 
@@ -205,7 +205,7 @@ def test_stop_job(token: str, id_job: str):
     return json.dumps(response, indent=4)
 
 
-@flow
+@flow(name="Test the task to delete a job")
 def test_delete_job(token: str, id_job: str):
     """Simple flow to delete an existing job
 
