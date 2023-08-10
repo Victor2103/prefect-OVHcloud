@@ -19,7 +19,7 @@ from prefect import task
 from prefect.exceptions import PrefectException
 
 
-@task
+@task(name="Create a python client with unique usage")
 def create_client(token: str) -> AuthenticatedClient:
     """Create an authenticated client for the SDK python
     We test if your token is correct
@@ -48,7 +48,7 @@ def create_client(token: str) -> AuthenticatedClient:
         raise PrefectException("Your token is not valid " + response.content.decode())
 
 
-@task
+@task(name="submit an AI Training job to OVHcloud")
 def submit_job(
     client: AuthenticatedClient,
     image: str,
@@ -117,7 +117,7 @@ def submit_job(
         return json.loads(response.content.decode())
 
 
-@task
+@task(name="Check if an AI Training job is not failed")
 def check_if_job_has_failed(
     state: str, client: AuthenticatedClient, id_job: str
 ) -> bool:
@@ -162,7 +162,7 @@ def check_if_job_has_failed(
         return True
 
 
-@task
+@task(name="Check the job's timeout")
 def check_time_out_job(
     timeout: float, start: float, id: str, client: AuthenticatedClient
 ) -> bool:
@@ -197,7 +197,7 @@ def check_time_out_job(
         return True
 
 
-@task
+@task(name="Get the status of the job")
 def get_state_job(id: str, client: AuthenticatedClient) -> str:
     """Get the status of the AI Training job
 
@@ -228,7 +228,7 @@ def get_state_job(id: str, client: AuthenticatedClient) -> str:
     return state
 
 
-@task
+@task(name="send a message with the status of the bot")
 def send_message_with_state(state: str, id: str):
     """Send a message to the user
 
@@ -243,7 +243,7 @@ def send_message_with_state(state: str, id: str):
     )
 
 
-@task
+@task(name="Get all infos of the AI Training job")
 def get_infos_of_job(id_job: str, client: AuthenticatedClient) -> dict:
     """Get all infos of an OVHcloud's job
     Args:
@@ -267,7 +267,7 @@ def get_infos_of_job(id_job: str, client: AuthenticatedClient) -> dict:
         )
 
 
-@task
+@task(name="get the logs of the AI Training job")
 def get_logs_of_job(id_job: str, client: AuthenticatedClient) -> str:
     """Get the logs of an OVHcloud's job
 
@@ -290,7 +290,7 @@ def get_logs_of_job(id_job: str, client: AuthenticatedClient) -> str:
         )
 
 
-@task
+@task(name="Start an existing job")
 def start_an_existing_job(id_job: str, client: AuthenticatedClient) -> dict:
     """Start an existing job from AI Training
 
@@ -312,7 +312,7 @@ def start_an_existing_job(id_job: str, client: AuthenticatedClient) -> dict:
         raise PrefectException(f"We can't start this job {response.content.decode()}")
 
 
-@task
+@task(name="stop an existing AI Training job")
 def stop_job(id_job: str, client: AuthenticatedClient) -> dict:
     """Stop an existing job from AI Training
 
@@ -334,7 +334,7 @@ def stop_job(id_job: str, client: AuthenticatedClient) -> dict:
         raise PrefectException(f"We can't stop this job {response.content.decode()}")
 
 
-@task
+@task(name="Delete an existing job")
 def delete_job(id_job: str, client: AuthenticatedClient) -> dict:
     """Delete an existing job from AI Training
 
