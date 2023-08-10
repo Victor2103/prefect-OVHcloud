@@ -49,50 +49,40 @@ def create_client(token: str) -> AuthenticatedClient:
 
 
 @task
-def create_a_job(
-    token,
-    image,
-    http_port=8080,
-    command=[],
-    listEnvVars=[],
-    dicLabels={},
-    name=None,
-    cpu=0,
-    gpu=1,
-    sshPublicKeys=[],
-    volumes=[],
-    timeout=3600,
-    wait_seconds=3,
-) -> Response[Job]:
-    """Create your first job and wait until he is finished
+def submit_job(
+    client: AuthenticatedClient,
+    image: str,
+    http_port: int = 8080,
+    command: list(str) = [],
+    listEnvVars: list(dict) = [],
+    dicLabels: dict = {},
+    name: str = None,
+    cpu: int = 0,
+    gpu: int = 1,
+    sshPublicKeys: list(str) = [],
+    volumes: list(dict) = [],
+) -> dict:
+    """Submit a job to the OVHcloud AI Training tool
 
     Args:
-        token (str):  your bearer token with AI operator role
-        image (str): your docker image
-        http_port (int, optional): the http port of the app.
-            Defaults to 8080.
-        command (list, optional): the command to run inside the docker container.
+        client (AuthenticatedClient): the python client
+        image (str): The docker image
+        http_port (int, optional): default http port. Defaults to 8080.
+        command (list, optional): command to run . Defaults to [].
+        listEnvVars (list, optional): your environments variables. Defaults to [].
+        dicLabels (dict, optional): some labels for the job. Defaults to {}.
+        name (str, optional): the name of the job. Defaults to None.
+        cpu (int, optional): the number of cpu. Defaults to 0.
+        gpu (int, optional): the number of gpu. Defaults to 1.
+        sshPublicKeys (list, optional): some ssh keys. Defaults to [].
+        volumes (list, optional): the git repo or object storage repo or S3.
             Defaults to [].
-        listEnvVars (list, optional): Une liste de variables d'environnement.
-            Defaults to [].
-        dicLabels (dict, optional): Un dictionnaire des labels du job.
-            Defaults to {}.
-        name (_type_, optional): la nom du job. Defaults to None.
-        cpu (int, optional): le nombre de cpu dans le job. Defaults to 0.
-        gpu (int, optional): le nombre de gpu dans le job. Defaults to 1.
-        sshPublicKeys (list, optional): un tableau de string avec les clées ssh.
-            Defaults to [].
-        volumes (list, optional): le tableau avec les swift containers ou les repo git.
-            Defaults to [].
-        timeout (float, optional): la limite de temps pour executer le job.
-            Defaults to 3600 (1 hour)
-        wait_seconds (float, optional): the duration beetween each call to get
-            the state of the job. Defaults to 3 (3 seconds)
 
     Raises:
-        PrefectException: Raise this exception if job can't be create
+        PrefectException: Exception to provide if the job failed to submitted
+
     Returns:
-        Response[Job]: The content of the job submitted
+        Dict: The detail of the job submitted in a json file
     """
     # First of all we create the request to send to the core API
     request = {
@@ -113,113 +103,135 @@ def create_a_job(
     # If CPU is indicated, we set the number of gpu to 0
     if cpu != 0:
         request.update({"resources": {"cpu": cpu, "gpu": 0}})
-    # Create a unique client for python SDK
-    client = AuthenticatedClient(
-        base_url="https://gra.training.ai.cloud.ovh.net", token=token
-    )
     # Submit the job to OVHcloud
     with client as client:
         response: Response[Job] = job_new.sync_detailed(
             client=client, json_body=JobSpec.from_dict(request)
         )
-    # Get the time where the job has been submitted
-    start = time.monotonic()
     # We check if the job is submitted to the AI Training tool
     if response.status_code != 200:
         raise PrefectException(
             "You Job can't be run !, here is the reason :", response.content.decode()
         )
+    else:
+        return json.loads(response.content.decode())
+
+
+@task
+def check_if_job_has_failed(state: str, client: AuthenticatedClient) -> bool:
+    """Check if the job has not a failed status
+
+    Args:
+        state (str): the job's state
+        client (AuthenticatedClient): the client from sdk python
+
+    Raises:
+        PrefectException: if the job is failed, interrupted or stopped
+
+    Returns:
+        bool: true if everything went well
+    """
+    # We check if the run is not broken
+    if state == "INTERRUPTED" or state == "FAILED" or state == "ERROR":
+        # Get the logs of the application
+        with client as client:
+            logs = job_log.sync_detailed(id=id, client=client)
+        if logs.status_code != 200:
+            raise PrefectException(f"We can't access the logs of your job {id}")
+        else:
+            if state == "INTERRUPTED":
+                raise PrefectException(
+                    f"Your job {id} is interrupted, here are the logs \n"
+                    + f"{logs.content.decode()}"
+                )
+            if state == "FAILED":
+                raise PrefectException(
+                    f"Your job {id} has failed, here are the logs \n"
+                    + f"{logs.content.decode()}"
+                )
+            if state == "ERROR":
+                raise PrefectException(
+                    f"Your job {id} has an error in the parameter,"
+                    + " here are the logs \n"
+                    + f"{logs.content.decode()}"
+                )
+    else:
+        return True
+
+
+@task
+def check_time_out_job(
+    timeout: float, start: float, id: str, client: AuthenticatedClient
+) -> bool:
+    """Check if maximum time has not been reached
+
+    Args:
+        timeout (float): the maximum time to run the job
+        start (float): a time in a float format when the job has been submit
+        id (str): the id of the job
+        client (AuthenticatedClient): client for the sdk python
+
+    Raises:
+        PrefectException: raise an exception if time is reached
+
+    Returns:
+        bool: true if everything went well
+    """
+    if timeout and start + timeout < time.monotonic():
+        # We stop the job
+        with client as client:
+            response: Response[Job] = job_kill.sync_detailed(id=id, client=client)
+        # We check if he has been stopped and send a prefect exeception
+        if response.status_code != 200:
+            raise PrefectException(
+                f"Timeout exceeded for the job {id} ! and we can't stop it !"
+            )
+        else:
+            raise PrefectException(
+                f"Timeout exceeded for the job {id}, he has been stopped"
+            )
+    else:
+        return True
+
+
+@task
+def get_state_job(id: str, client: AuthenticatedClient) -> str:
+    """Get the status of the AI Training job
+
+    Args:
+        id (str): the id of your job
+        client (AuthenticatedClient): the client from SDK python
+
+    Raises:
+        PrefectException: If we can't get the status of the job
+
+    Returns:
+        str: the job's status (DONE, FAILED ...)
+    """
+    with client as client:
+        response: Response[Job] = job_get.sync_detailed(id=id, client=client)
+    # We check if you have the new informations of the job
+    if response.status_code != 200:
+        raise PrefectException(
+            "We can't get the infos of your job, here is the reason : "
+            + f"{response.content.decode()}"
+        )
     # We get the content of the response
     response_content = response.content.decode()
     # We transform the response as a dict
     response_dict = json.loads(response_content)
-    # We get the id of the job
-    id = response_dict["id"]
-    # At regular intervals, we check whether the job has been completed
+    # We get the status of the job
     state = response_dict["status"]["state"]
-    # While the job is not done or failed we check the job's status
-    while (
-        state != "DONE"
-        and state != "INTERRUPTED"
-        and state != "FAILED"
-        and state != "ERROR"
-    ):
-        # Send a message with the state of the job
-        if state != "DONE":
-            print(
-                datetime.datetime.now(datetime.timezone.utc),
-                f" [prefect] Wait, your job {id} is in state ",
-                state,
-            )
-        if timeout and start + timeout < time.monotonic():
-            # We stop the job
-            client = AuthenticatedClient(
-                base_url="https://gra.training.ai.cloud.ovh.net", token=token
-            )
-            with client as client:
-                response: Response[Job] = job_kill.sync_detailed(id=id, client=client)
-            # We check if he has been stopped and send a prefect exeception
-            if response.status_code != 200:
-                raise PrefectException(
-                    f"Timeout exceeded for the job {id} ! and we can't stop it !"
-                )
-            else:
-                raise PrefectException(
-                    f"Timeout exceeded for the job {id}, he has been stopped"
-                )
-        # Wait 10 seconds
-        time.sleep(wait_seconds)
-        # Make a new call to get the status
-        client = AuthenticatedClient(
-            base_url="https://gra.training.ai.cloud.ovh.net", token=token
-        )
-        with client as client:
-            response: Response[Job] = job_get.sync_detailed(id=id, client=client)
-        # We check if you have the new informations of the job
-        if response.status_code != 200:
-            raise PrefectException(
-                f"You Job {id} can't be run !, here is the reason :",
-                response.content.decode(),
-            )
-        # We get the content of the response
-        response_content = response.content.decode()
-        # We transform the response as a dict
-        response_dict = json.loads(response_content)
-        state = response_dict["status"]["state"]
-        # We check if the run is not broken
-        if state == "INTERRUPTED" or state == "FAILED" or state == "ERROR":
-            # Get the logs of the application
-            client = AuthenticatedClient(
-                base_url="https://gra.training.ai.cloud.ovh.net", token=token
-            )
-            with client as client:
-                logs = job_log.sync_detailed(id=id, client=client)
-            if logs.status_code != 200:
-                raise PrefectException(f"We can't access the logs of your job {id}")
-            else:
-                if state == "INTERRUPTED":
-                    raise PrefectException(
-                        f"Your job {id} is interrupted, here are the logs \n"
-                        + f"{logs.content.decode()}"
-                    )
-                if state == "FAILED":
-                    raise PrefectException(
-                        f"Your job {id} has failed, here are the logs \n"
-                        + f"{logs.content.decode()}"
-                    )
-                if state == "ERROR":
-                    raise PrefectException(
-                        f"Your job {id} has an error in the parameter,"
-                        + " here are the logs \n"
-                        + f"{logs.content.decode()}"
-                    )
-    # We transform the response with only the string
-    response = response.content.decode()
-    # We transform the response as a dict
-    response = json.loads(response)
-    # We transform the response with a well format to see it
-    response = json.dumps(response, indent=4)
-    return response
+    return state
+
+
+@task
+def send_message_with_state(state: str):
+    print(
+        datetime.datetime.now(datetime.timezone.utc),
+        f" [prefect] Wait, your job {id} is in state ",
+        state,
+    )
 
 
 @task

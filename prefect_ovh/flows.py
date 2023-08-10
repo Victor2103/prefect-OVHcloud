@@ -3,15 +3,20 @@ import json
 import time
 
 from prefect import flow
+from prefect.exceptions import PrefectException
 
 from prefect_ovh.tasks import (
-    create_a_job,
+    check_if_job_has_failed,
+    check_time_out_job,
     create_client,
     delete_job,
     get_infos_of_job,
     get_logs_of_job,
+    get_state_job,
+    send_message_with_state,
     start_an_existing_job,
     stop_job,
+    submit_job,
 )
 
 
@@ -30,35 +35,53 @@ def hello_world(token: str) -> dict:
 
 
 @flow(name="Create your first Job")
-def create_a_first_job(
+def create_job_and_wait_until_is_done(
     token: str,
+    image: str,
+    http_port: int = 8080,
+    command: list(str) = [],
+    listEnvVars: list(dict) = [],
+    dicLabels: list(dict) = {},
+    name: str = None,
+    cpu: int = 0,
+    gpu: int = 1,
+    sshPublicKeys: list(str) = [],
+    volumes: list(dict) = [],
+    timeout: float = 3600,
+    wait_seconds: float = 3,
 ) -> dict:
-    """
-    Sample Flow that create an AI Training Job
-    Get the id of this job
-    Make a call to get infos with state
-    Get the logs of the job
-    Stop the same job
-    Restart the same job
+    """Create a job and send error if failed
+
+    Args:
+        token (str): The bearer token from OVHcloud
+        image (str): your docker image
+        http_port (int, optional): the default http port. Defaults to 8080.
+        command (list, optional): command to run in container. Defaults to [].
+        listEnvVars (list, optional): your env variables. Defaults to [].
+        dicLabels (list, optional): the job's labels. Defaults to {}.
+        name (str, optional): the name of the job. Defaults to None.
+        cpu (int, optional): the number of cpu. Defaults to 0.
+        gpu (int, optional): number of gpu. Defaults to 1.
+        sshPublicKeys (list, optional): the ssh public keys. Defaults to [].
+        volumes (list, optional): some volumes such as git repo or swift containers.
+            Defaults to [].
+        timeout (float, optional): max time to run the job. Defaults to 3600.
+        wait_seconds (float, optional): the time beetween each call for the status.
+            Defaults to 3.
+
+    Raises:
+        PrefectException: If we have error unknow.
+
     Returns:
-        The response when calling job infos
+        dict: the infos of the job with good display
     """
-    # Create a client for job creation
+    # Create a client for job submission to the API
     client = create_client(token=token)
     # Define the parameter to put in the job creation
-    image = "bash"
-    http_port = 8080
-    command = ["sleep", "180"]
-    listEnvVars = []
-    dicLabels = {}
-    name = None
-    cpu = 0
-    gpu = 1
-    sshPublicKeys = []
-    volumes = []
-    # Launch the task create a job
-    response = create_a_job(
-        token=token,
+
+    # Launch the task to submit a job
+    response = submit_job(
+        client=client,
         image=image,
         http_port=http_port,
         command=command,
@@ -70,82 +93,38 @@ def create_a_first_job(
         sshPublicKeys=sshPublicKeys,
         volumes=volumes,
     )
-    # You can run the task with only the image as a parameter
-    # response = create_a_job(client=client,image=image)
-    response = json.loads(response)
-    # Get the id
+    # We get the status and the id of the job
     id = response["id"]
-    # Create a new client to get the infos of the job
+    state = response["state"]["status"]
+    # We get a float for the time now (to check the timeout)
+    start = time.monotonic()
+    # We check with regular intervals if job is over
+    while (
+        state != "DONE"
+        and state != "INTERRUPTED"
+        and state != "FAILED"
+        and state != "ERROR"
+    ):
+        # We create a new client
+        client = create_client(token=token)
+        # We check of the timeout is not exceeded
+        if not check_time_out_job(timeout=timeout, start=start, id=id, client=client):
+            raise PrefectException("We encountered an Error")
+        # We send a message to the user
+        send_message_with_state(state=state)
+        # We wait with param wait_seconds
+        time.sleep(wait_seconds)
+        # We get the new status
+        client = create_client(token=token)
+        state = get_state_job(id=id, client=client)
+        # We check if the job has not failed
+        client = create_client(token=token)
+        if not check_if_job_has_failed(state=state, client=client):
+            raise PrefectException("We encountered an error")
+    # We get the infos of the job and send it in a good display
     client = create_client(token=token)
-    # Make a new call to the api
-    result = get_infos_of_job(id_job=id, client=client)
-    print("Here is your job created : \n", result)
-    # Create a new client for the job's logs
-    client = create_client(token=token)
-    # Get the logs of the job
-    result = get_logs_of_job(id_job=id, client=client)
-    print("Here are your logs \n", result)
-    # Create a new client
-    client = create_client(token=token)
-    # Stop the job
-    result = stop_job(id_job=id, client=client)
-    print("Here is your job stopped : \n", f"{result}")
-    # Create a new client
-    client = create_client(token=token)
-    # Whait that your job is really stopped
-    time.sleep(20)
-    # Restart the job
-    result = start_an_existing_job(id_job=id, client=client)
-    print(result)
-    time.sleep(300)
-    # Delete the job
-    client = create_client(token=token)
-    result = delete_job(id_job=id, client=client)
-    # Return this dict of the flow
-    return result
-
-
-@flow
-def test_creation(token):
-    """
-    Sample Flow that create an AI Training Job
-    Get the id of this job
-    Make a call to get infos with state
-    Get the logs of the job
-    Stop the same job
-    Restart the same job
-    Returns:
-        The response when calling job infos
-    """
-    # Define the parameter to put in the job creation
-    image = "bash"
-    http_port = 8080
-    command = ["sleep", "80"]
-    listEnvVars = []
-    dicLabels = {}
-    name = None
-    cpu = 1
-    gpu = 0
-    sshPublicKeys = []
-    volumes = []
-    timeout = 3600
-    wait_seconds = 3
-    response = create_a_job(
-        token=token,
-        image=image,
-        http_port=http_port,
-        command=command,
-        listEnvVars=listEnvVars,
-        dicLabels=dicLabels,
-        name=name,
-        cpu=cpu,
-        gpu=gpu,
-        sshPublicKeys=sshPublicKeys,
-        volumes=volumes,
-        timeout=timeout,
-        wait_seconds=wait_seconds,
-    )
-    return response
+    infos = get_infos_of_job(id=id, client=client)
+    return json.dumps(infos, indent=4)
 
 
 @flow
