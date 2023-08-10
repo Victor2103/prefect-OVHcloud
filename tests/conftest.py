@@ -1,5 +1,13 @@
+import os
+
 import pytest
+from dotenv import load_dotenv
 from prefect.testing.utilities import prefect_test_harness
+
+# Load environments variables
+load_dotenv()
+
+TOKEN = os.getenv("TOKEN")
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -24,4 +32,4 @@ def reset_object_registry():
 
 @pytest.fixture
 def token():
-    return "SAnNu2i6R+K6JOYaAUDclnTWx1XH3Ck7+hIfr2dWj4oLEbt+XvhMnvUUegm0QFY9"
+    return TOKEN
