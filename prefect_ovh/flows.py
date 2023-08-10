@@ -49,6 +49,9 @@ def create_job_and_wait_until_is_done(
     volumes: list = [],
     timeout: float = 3600,
     wait_seconds: float = 3,
+    telegram: bool = False,
+    api_telegram: str = None,
+    chat_id: str = None,
 ) -> dict:
     """Create a job and send error if failed
 
@@ -68,6 +71,11 @@ def create_job_and_wait_until_is_done(
         timeout (float, optional): max time to run the job. Defaults to 3600.
         wait_seconds (float, optional): the time beetween each call for the status.
             Defaults to 3.
+        telegram (bool, optional): a boolean if you have a telegram api to send
+            the message instead of terminal. Defaults to False.
+        api_telegram (str): the api telegram if you want to send a message to your chat.
+            Defaults to None.
+        chat_id (str): the chat id of your telegram bot. Defaults to None.
 
     Raises:
         PrefectException: If we have error unknow.
@@ -111,7 +119,13 @@ def create_job_and_wait_until_is_done(
         if not check_time_out_job(timeout=timeout, start=start, id=id, client=client):
             raise PrefectException("We encountered an Error")
         # We send a message to the user
-        send_message_with_state(state=state, id=id)
+        send_message_with_state(
+            state=state,
+            id=id,
+            telegram=telegram,
+            api_telegram=api_telegram,
+            chat_id=chat_id,
+        )
         # We wait with param wait_seconds
         time.sleep(wait_seconds)
         # We get the new status

@@ -16,6 +16,7 @@ from ov_hcloud_ai_solution_client.api.me import me
 from ov_hcloud_ai_solution_client.models import Job, JobSpec, Me
 from ov_hcloud_ai_solution_client.types import Response
 from prefect import task
+from prefect.blocks.notifications import AppriseNotificationBlock
 from prefect.exceptions import PrefectException
 
 
@@ -229,18 +230,38 @@ def get_state_job(id: str, client: AuthenticatedClient) -> str:
 
 
 @task(name="send a message with the status of the bot")
-def send_message_with_state(state: str, id: str):
+def send_message_with_state(
+    state: str, id: str, telegram: bool, api_telegram: str, chat_id: str
+):
     """Send a message to the user
 
     Args:
         state (str): the state of the job_
         id (str): the AI Training job ID
+        telegram (bool): a bool variable to determine
+            if we sent a telegram message
+        api_telegram (str): the id of your api telegram
+        chat_id (str): the id of the chat in telegram
     """
-    print(
-        datetime.datetime.now(datetime.timezone.utc),
-        f" [prefect] Wait, your job {id} is in state ",
-        state,
-    )
+    if telegram:
+        # We create the hook for telegram
+        telegram_webhook_block = AppriseNotificationBlock(
+            url=f"tgram://{api_telegram}/{chat_id}/"
+        )
+        # We create the message
+        message = (
+            str(datetime.datetime.now(datetime.timezone.utc))
+            + f" [prefect] Wait, your job {id} is in state "
+            + state
+        )
+        # We notify on telegram
+        telegram_webhook_block.notify(message)
+    else:
+        print(
+            datetime.datetime.now(datetime.timezone.utc),
+            f" [prefect] Wait, your job {id} is in state ",
+            state,
+        )
 
 
 @task(name="Get all infos of the AI Training job")
