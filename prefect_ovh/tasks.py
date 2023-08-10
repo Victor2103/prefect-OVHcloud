@@ -53,14 +53,14 @@ def submit_job(
     client: AuthenticatedClient,
     image: str,
     http_port: int = 8080,
-    command: list(str) = [],
-    listEnvVars: list(dict) = [],
+    command: list = [],
+    listEnvVars: list = [],
     dicLabels: dict = {},
     name: str = None,
     cpu: int = 0,
     gpu: int = 1,
-    sshPublicKeys: list(str) = [],
-    volumes: list(dict) = [],
+    sshPublicKeys: list = [],
+    volumes: list = [],
 ) -> dict:
     """Submit a job to the OVHcloud AI Training tool
 
@@ -118,12 +118,15 @@ def submit_job(
 
 
 @task
-def check_if_job_has_failed(state: str, client: AuthenticatedClient) -> bool:
+def check_if_job_has_failed(
+    state: str, client: AuthenticatedClient, id_job: str
+) -> bool:
     """Check if the job has not a failed status
 
     Args:
         state (str): the job's state
         client (AuthenticatedClient): the client from sdk python
+        id(str): the id of your job
 
     Raises:
         PrefectException: if the job is failed, interrupted or stopped
@@ -135,23 +138,23 @@ def check_if_job_has_failed(state: str, client: AuthenticatedClient) -> bool:
     if state == "INTERRUPTED" or state == "FAILED" or state == "ERROR":
         # Get the logs of the application
         with client as client:
-            logs = job_log.sync_detailed(id=id, client=client)
+            logs = job_log.sync_detailed(id=id_job, client=client)
         if logs.status_code != 200:
-            raise PrefectException(f"We can't access the logs of your job {id}")
+            raise PrefectException(f"We can't access the logs of your job {id_job}")
         else:
             if state == "INTERRUPTED":
                 raise PrefectException(
-                    f"Your job {id} is interrupted, here are the logs \n"
+                    f"Your job {id_job} is interrupted, here are the logs \n"
                     + f"{logs.content.decode()}"
                 )
             if state == "FAILED":
                 raise PrefectException(
-                    f"Your job {id} has failed, here are the logs \n"
+                    f"Your job {id_job} has failed, here are the logs \n"
                     + f"{logs.content.decode()}"
                 )
             if state == "ERROR":
                 raise PrefectException(
-                    f"Your job {id} has an error in the parameter,"
+                    f"Your job {id_job} has an error in the parameter,"
                     + " here are the logs \n"
                     + f"{logs.content.decode()}"
                 )
@@ -226,7 +229,13 @@ def get_state_job(id: str, client: AuthenticatedClient) -> str:
 
 
 @task
-def send_message_with_state(state: str):
+def send_message_with_state(state: str, id: str):
+    """Send a message to the user
+
+    Args:
+        state (str): the state of the job_
+        id (str): the AI Training job ID
+    """
     print(
         datetime.datetime.now(datetime.timezone.utc),
         f" [prefect] Wait, your job {id} is in state ",

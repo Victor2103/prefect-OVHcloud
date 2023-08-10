@@ -39,14 +39,14 @@ def create_job_and_wait_until_is_done(
     token: str,
     image: str,
     http_port: int = 8080,
-    command: list(str) = [],
-    listEnvVars: list(dict) = [],
-    dicLabels: list(dict) = {},
+    command: list = [],
+    listEnvVars: list = [],
+    dicLabels: dict = {},
     name: str = None,
     cpu: int = 0,
     gpu: int = 1,
-    sshPublicKeys: list(str) = [],
-    volumes: list(dict) = [],
+    sshPublicKeys: list = [],
+    volumes: list = [],
     timeout: float = 3600,
     wait_seconds: float = 3,
 ) -> dict:
@@ -95,7 +95,7 @@ def create_job_and_wait_until_is_done(
     )
     # We get the status and the id of the job
     id = response["id"]
-    state = response["state"]["status"]
+    state = response["status"]["state"]
     # We get a float for the time now (to check the timeout)
     start = time.monotonic()
     # We check with regular intervals if job is over
@@ -111,7 +111,7 @@ def create_job_and_wait_until_is_done(
         if not check_time_out_job(timeout=timeout, start=start, id=id, client=client):
             raise PrefectException("We encountered an Error")
         # We send a message to the user
-        send_message_with_state(state=state)
+        send_message_with_state(state=state, id=id)
         # We wait with param wait_seconds
         time.sleep(wait_seconds)
         # We get the new status
@@ -119,11 +119,11 @@ def create_job_and_wait_until_is_done(
         state = get_state_job(id=id, client=client)
         # We check if the job has not failed
         client = create_client(token=token)
-        if not check_if_job_has_failed(state=state, client=client):
+        if not check_if_job_has_failed(state=state, client=client, id_job=id):
             raise PrefectException("We encountered an error")
     # We get the infos of the job and send it in a good display
     client = create_client(token=token)
-    infos = get_infos_of_job(id=id, client=client)
+    infos = get_infos_of_job(id_job=id, client=client)
     return json.dumps(infos, indent=4)
 
 
