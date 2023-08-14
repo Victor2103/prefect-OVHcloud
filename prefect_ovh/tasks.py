@@ -120,7 +120,10 @@ def submit_job(
 
 @task(name="Check if an AI Training job is not failed")
 def check_if_job_has_failed(
-    state: str, client: AuthenticatedClient, id_job: str
+    state: str,
+    client: AuthenticatedClient,
+    id_job: str,
+    telegram_webhook: AppriseNotificationBlock,
 ) -> bool:
     """Check if the job has not a failed status
 
@@ -128,6 +131,7 @@ def check_if_job_has_failed(
         state (str): the job's state
         client (AuthenticatedClient): the client from sdk python
         id(str): the id of your job
+        telegram_webhook (AppriseNotificationBlock): the webhook to send a notif on tlg
 
     Raises:
         PrefectException: if the job is failed, interrupted or stopped
@@ -143,17 +147,31 @@ def check_if_job_has_failed(
         if logs.status_code != 200:
             raise PrefectException(f"We can't access the logs of your job {id_job}")
         else:
+            message = None
+            if telegram_webhook is not None:
+                message = (
+                    str(datetime.datetime.now(datetime.timezone.utc))
+                    + f" [prefect] Your job {id_job} didn't entered done state "
+                    + "Here are the logs :"
+                    + f"{logs.content.decode()}"
+                )
             if state == "INTERRUPTED":
+                if message:
+                    telegram_webhook.notify(message)
                 raise PrefectException(
                     f"Your job {id_job} is interrupted, here are the logs \n"
                     + f"{logs.content.decode()}"
                 )
             if state == "FAILED":
+                if message:
+                    telegram_webhook.notify(message)
                 raise PrefectException(
                     f"Your job {id_job} has failed, here are the logs \n"
                     + f"{logs.content.decode()}"
                 )
             if state == "ERROR":
+                if message:
+                    telegram_webhook.notify(message)
                 raise PrefectException(
                     f"Your job {id_job} has an error in the parameter,"
                     + " here are the logs \n"
@@ -231,7 +249,7 @@ def get_state_job(id: str, client: AuthenticatedClient) -> str:
 
 @task(name="send a message with the status of the bot")
 def send_message_with_state(
-    state: str, id: str, telegram: bool, api_telegram: str, chat_id: str
+    state: str, id: str, telegram_webhook: AppriseNotificationBlock
 ):
     """Send a message to the user
 
@@ -240,28 +258,19 @@ def send_message_with_state(
         id (str): the AI Training job ID
         telegram (bool): a bool variable to determine
             if we sent a telegram message
-        api_telegram (str): the id of your api telegram
-        chat_id (str): the id of the chat in telegram
+        telegram_webhook(AppriseNotificationBlock): Telegram webhook
+            to send notification
     """
-    if telegram:
-        # We create the hook for telegram
-        telegram_webhook_block = AppriseNotificationBlock(
-            url=f"tgram://{api_telegram}/{chat_id}/"
-        )
-        # We create the message
-        message = (
-            str(datetime.datetime.now(datetime.timezone.utc))
-            + f" [prefect] Wait, your job {id} is in state "
-            + state
-        )
+    # We create the message
+    message = (
+        str(datetime.datetime.now(datetime.timezone.utc))
+        + f" [prefect] Wait, your job {id} is in state "
+        + state
+    )
+    if telegram_webhook is not None:
         # We notify on telegram
-        telegram_webhook_block.notify(message)
-    else:
-        print(
-            datetime.datetime.now(datetime.timezone.utc),
-            f" [prefect] Wait, your job {id} is in state ",
-            state,
-        )
+        telegram_webhook.notify(message)
+    print(message)
 
 
 @task(name="Get all infos of the AI Training job")
@@ -375,3 +384,23 @@ def delete_job(id_job: str, client: AuthenticatedClient) -> dict:
         return id_job
     else:
         raise PrefectException("We can't delete this job ")
+
+
+@task(name="Create a webhook to notify for telegram")
+def create_webhook_telegram(
+    chat_id: str, api_telegram: str
+) -> AppriseNotificationBlock:
+    """Create a webhook to send notification to telegram
+
+    Args:
+        chat_id (str): your secret chat id from telegram
+        api_telegram (str): your secret id for the api telegram
+
+    Returns:
+        AppriseNotificationBlock: the webhook to send notification
+    """
+    # We create the hook for telegram
+    telegram_webhook_block = AppriseNotificationBlock(
+        url=f"tgram://{api_telegram}/{chat_id}/"
+    )
+    return telegram_webhook_block

@@ -9,6 +9,7 @@ from prefect_ovh.tasks import (
     check_if_job_has_failed,
     check_time_out_job,
     create_client,
+    create_webhook_telegram,
     delete_job,
     get_infos_of_job,
     get_logs_of_job,
@@ -73,9 +74,9 @@ def create_job_and_wait_until_is_done(
             Defaults to 3.
         telegram (bool, optional): a boolean if you have a telegram api to send
             the message instead of terminal. Defaults to False.
-        api_telegram (str): the api telegram if you want to send a message to your chat.
-            Defaults to None.
-        chat_id (str): the chat id of your telegram bot. Defaults to None.
+        api_telegram (str, optional): the api telegram if you want to send
+            a message to your chat. Defaults to None.
+        chat_id (str, optional): the chat id of your telegram bot. Defaults to None.
 
     Raises:
         PrefectException: If we have error unknow.
@@ -85,8 +86,13 @@ def create_job_and_wait_until_is_done(
     """
     # Create a client for job submission to the API
     client = create_client(token=token)
-    # Define the parameter to put in the job creation
-
+    if telegram:
+        # Create a webhook telegram if you provide api keys and chat id
+        telegram_webHook = create_webhook_telegram(
+            chat_id=chat_id, api_telegram=api_telegram
+        )
+    else:
+        telegram_webHook = None
     # Launch the task to submit a job
     response = submit_job(
         client=client,
@@ -119,13 +125,7 @@ def create_job_and_wait_until_is_done(
         if not check_time_out_job(timeout=timeout, start=start, id=id, client=client):
             raise PrefectException("We encountered an Error")
         # We send a message to the user
-        send_message_with_state(
-            state=state,
-            id=id,
-            telegram=telegram,
-            api_telegram=api_telegram,
-            chat_id=chat_id,
-        )
+        send_message_with_state(state=state, id=id, telegram_webhook=telegram_webHook)
         # We wait with param wait_seconds
         time.sleep(wait_seconds)
         # We get the new status
@@ -133,11 +133,19 @@ def create_job_and_wait_until_is_done(
         state = get_state_job(id=id, client=client)
         # We check if the job has not failed
         client = create_client(token=token)
-        if not check_if_job_has_failed(state=state, client=client, id_job=id):
+        if not check_if_job_has_failed(
+            state=state, client=client, id_job=id, telegram_webhook=telegram_webHook
+        ):
             raise PrefectException("We encountered an error")
     # We get the infos of the job and send it in a good display
     client = create_client(token=token)
     infos = get_infos_of_job(id_job=id, client=client)
+    # Send the infos on telegram
+    if telegram_webHook is not None:
+        message = (
+            f"Here are the infos of your job {id}" + f"{json.dumps(infos, indent=4)}"
+        )
+        telegram_webHook.notify(message)
     return json.dumps(infos, indent=4)
 
 
