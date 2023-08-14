@@ -28,8 +28,3 @@ def reset_object_registry():
 
     with PrefectObjectRegistry():
         yield
-
-
-@pytest.fixture
-def token():
-    return TOKEN

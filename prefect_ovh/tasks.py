@@ -1,4 +1,3 @@
-"""This is an example tasks module"""
 import datetime
 import json
 import time
@@ -115,7 +114,7 @@ def submit_job(
     # We check if the job is submitted to the AI Training tool
     if response.status_code != 200:
         raise PrefectException(
-            "You Job can't be run !, here is the reason :", response.content.decode()
+            "Your Job can't be run !, here is the reason :", response.content.decode()
         )
     else:
         return json.loads(response.content.decode())
