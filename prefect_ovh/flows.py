@@ -48,7 +48,8 @@ def create_job_and_wait_until_is_done(
     gpu: int = 1,
     sshPublicKeys: list = [],
     volumes: list = [],
-    timeout: float = 3600,
+    timeout_prefect: float = 3600,
+    timeout_ovh: int = 0,
     wait_seconds: float = 3,
     telegram: bool = False,
     api_telegram: str = None,
@@ -69,7 +70,10 @@ def create_job_and_wait_until_is_done(
         sshPublicKeys (list, optional): the ssh public keys. Defaults to [].
         volumes (list, optional): some volumes such as git repo or swift containers.
             Defaults to [].
-        timeout (float, optional): max time to run the job. Defaults to 3600.
+        timeout_prefect (float, optional): max time to run the job on prefect.
+            Defaults to 3600.
+        timeout_ovh (float, optional): max time to run the job on ovhcloud.
+            Defaults to 0.
         wait_seconds (float, optional): the time beetween each call for the status.
             Defaults to 3.
         telegram (bool, optional): a boolean if you have a telegram api to send
@@ -106,6 +110,7 @@ def create_job_and_wait_until_is_done(
         gpu=gpu,
         sshPublicKeys=sshPublicKeys,
         volumes=volumes,
+        timeout=timeout_ovh,
     )
     # We get the status and the id of the job
     id = response["id"]
@@ -122,7 +127,9 @@ def create_job_and_wait_until_is_done(
         # We create a new client
         client = create_client(token=token)
         # We check of the timeout is not exceeded
-        if not check_time_out_job(timeout=timeout, start=start, id=id, client=client):
+        if not check_time_out_job(
+            timeout=timeout_prefect, start=start, id=id, client=client
+        ):
             raise PrefectException("We encountered an Error")
         # We send a message to the user
         send_message_with_state(state=state, id=id, telegram_webhook=telegram_webHook)
@@ -143,10 +150,10 @@ def create_job_and_wait_until_is_done(
     # Send the infos on telegram
     if telegram_webHook is not None:
         message = (
-            f"Here are the infos of your job {id}" + f"{json.dumps(infos, indent=4)}"
+            f"Here are the infos of your job {id} \n" + f"{json.dumps(infos, indent=4)}"
         )
         telegram_webHook.notify(message)
-    return json.dumps(infos, indent=4)
+    return infos
 
 
 @flow(name="Test the python client")
